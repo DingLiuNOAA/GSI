@@ -300,7 +300,7 @@ contains
 
     newpc4pred = .false.  ! .true.=turn on new preconditioning for bias coefficients
     passive_bc = .false.  ! .true.=turn on bias correction for monitored channels
-    reset_bad_radbc = .false.  ! .true.=turn on reseting bas radiance bias correction coefficients
+    reset_bad_radbc = .true.  ! .true.=turn on reseting bas radiance bias correction coefficients
     adp_anglebc = .false. ! .true.=turn on angle bias correction
     bias_zero_start = .true. ! .true.=Zero start; .false.=mode start
     emiss_bc = .false.    ! .true.=turn on emissivity bias correction
@@ -1256,6 +1256,9 @@ contains
     use mpimod, only: mype
     implicit none
 
+    real(r_kind),parameter :: predx_max =  99999.999999_r_kind
+    real(r_kind),parameter :: predx_min =  -9999.999999_r_kind
+
     integer(i_kind),optional, intent(in) :: pe_out
 
     integer(i_kind) lunout,jch,ip,i
@@ -1293,11 +1296,22 @@ contains
        else
           do jch=1,jpch_rad
              if(reset_bad_radbc) then
+                !do ip=1,npred
+                !   if(abs(predx(ip,jch)) > 9999.0_r_kind) then
+                !      write(6,*) 'Bad coefficient:', jch,nusis(jch),nuchan(jch), &
+                !             predx(ip,jch),' reset to 0.0'
+                !      predx(ip,jch)=0.0_r_kind
+                !   endif
+                !enddo
                 do ip=1,npred
-                   if(abs(predx(ip,jch)) > 9999.0_r_kind) then
+                   if(predx(ip,jch) > predx_max) then
                       write(6,*) 'Bad coefficient:', jch,nusis(jch),nuchan(jch), &
-                             predx(ip,jch),' reset to 0.0'
-                      predx(ip,jch)=0.0_r_kind
+                             predx(ip,jch),' reset to ',predx_max
+                      predx(ip,jch)=predx_max
+                   else if(predx(ip,jch) < predx_min) then
+                      write(6,*) 'Bad coefficient:', jch,nusis(jch),nuchan(jch), &
+                             predx(ip,jch),' reset to ',predx_min
+                      predx(ip,jch)=predx_min
                    endif
                 enddo
              endif
