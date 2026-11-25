@@ -370,6 +370,7 @@ subroutine read_prepbufr(nread,ndata,nodata,infile,obstype,lunout,twindin,sis,&
   integer(i_kind) ivtcd,iglcd !integer virtual temp program code and GLERL program code
 
   real(r_double) rstation_id,qcmark_huge,vtcd,glcd
+  real(r_double), external :: getbmiss
   real(r_double),dimension(8):: hdr,hdrtsb
   real(r_double),dimension(3,255):: hdr3
   real(r_double),dimension(8,255):: drfdat,qcmark,obserr,var_jb
@@ -1621,8 +1622,14 @@ subroutine read_prepbufr(nread,ndata,nodata,infile,obstype,lunout,twindin,sis,&
            idx = 0
            iyyyymm = iadate(1)*100+iadate(2)
            if (tob)then
+!           Compare the packed SID byte for byte to the BUFR missing value.
+!           Skip tail lookup and insertion for a missing SID so its bytes
+!           cannot reach aircftbias_out. With idx=0 the observation remains
+!           eligible for assimilation without temperature bias correction.
+!           KX130 still uses a fixed key rather than the reported SID.
             if (aircraftobst .and. (aircraft_t_bc_pof .or. &
-                aircraft_t_bc .or. aircraft_t_bc_ext)) then
+                aircraft_t_bc .or. aircraft_t_bc_ext) .and. &
+                (kx==130 .or. c_station_id /= transfer(getbmiss(),c_station_id))) then
 !             Determine if the tail number is included in the taillist
 !                special treatment since kx130 has only flight NO. info, no
 !                aircraft type info
